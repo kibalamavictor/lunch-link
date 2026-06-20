@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm Cream background */
+    --background: 38 33% 93%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    /* Deep Charcoal primary CTA */
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Sage Green secondary */
+    --secondary: 84 44% 76%;
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 0 0% 53%;
+    --muted-foreground: 0 0% 53%;
+
+    --accent: 84 44% 76%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 1 79% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 122 39% 49%;
+    --warning: 45 100% 48%;
+
+    --border: 38 20% 88%;
+    --input: 38 20% 88%;
+    --ring: 84 44% 60%;
+
+    --radius-sm: 12px;
+    --radius-md: 20px;
+    --radius-lg: 28px;
+    --radius-xl: 36px;
+
+    --font-inter:
+      Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      sans-serif;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+}
+
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .numerical {
+    @apply text-foreground font-bold;
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@lunchlink/types",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src/"
+  },
+  "devDependencies": {
+    "@lunchlink/eslint-config": "workspace:*",
+    "@lunchlink/typescript-config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}
