@@ -51,6 +51,12 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = true
 
+# Custom access token hook (Roadmap S1) — injects role + scoped ids into the JWT.
+# Defined in migration 20250623000018_auth_access_token_hook.sql.
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
+
 [edge_runtime]
 enabled = true
 policy = "oneshot"

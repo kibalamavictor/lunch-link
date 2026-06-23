@@ -11,6 +11,9 @@ export default tseslint.config(
       "**/dist/**",
       "**/.turbo/**",
       "**/supabase/.temp/**",
+      // Deno Edge Functions have their own toolchain (deno lint/check), not the
+      // Node ESLint config — globals like `Deno` and `jsr:` imports are valid there.
+      "**/supabase/functions/**",
     ],
   },
   eslint.configs.recommended,
