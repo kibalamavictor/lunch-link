@@ -127,7 +127,11 @@ The canonical codes are exactly those raised/returned by the DB functions in `01
 | `DAILY_LIMIT_EXCEEDED` | `check_redemption_eligibility()` | 422 | `DAILY_LIMIT_REACHED` |
 | `COOLDOWN_ACTIVE` | `check_redemption_eligibility()` | 422 | `COOLDOWN_ACTIVE` |
 
-> **Not-yet-built layers (non-normative, forward-looking):** QR, redemption, payment, reconciliation, and payout Edge Functions will emit their own codes **verbatim from their source** when implemented — e.g. `QR_EXPIRED`, `QR_ALREADY_USED` (§12.2), `VALIDATION_SESSION_EXPIRED`, `RESTAURANT_CLOSED` (§6.12), `SAUCE_UNAVAILABLE` (§6.5, §12.4), `PAYMENT_EXPIRED`, `DUPLICATE_WEBHOOK`, `RECONCILIATION_BLOCKED` (§8.6), `PAYOUT_PERIOD_LOCKED` (§8.7). These are **not canonical** here until their source function/handler exists; their `code → HTTP status` mapping will follow §1.6 (the prior values were 409 for the conflict/expiry codes, 422 for `RESTAURANT_CLOSED`/`SAUCE_UNAVAILABLE`/`RECONCILIATION_BLOCKED`, and `DUPLICATE_WEBHOOK` is treated as success, 200/202).
+> **Not-yet-built layers (non-normative, forward-looking — placeholder names):** The names below are **placeholder names pending source reconciliation, not proposed final codes.** QR, redemption, payment, reconciliation, and payout Edge Functions are not built yet, so these are illustrative only and **not canonical**: `QR_EXPIRED`, `QR_ALREADY_USED` (§12.2), `VALIDATION_SESSION_EXPIRED`, `RESTAURANT_CLOSED` (§6.12), `SAUCE_UNAVAILABLE` (§6.5, §12.4), `PAYMENT_EXPIRED`, `DUPLICATE_WEBHOOK`, `RECONCILIATION_BLOCKED` (§8.6), `PAYOUT_PERIOD_LOCKED` (§8.7).
+>
+> When the owning DB function or Edge handler is built, adopt the code it raises **verbatim** and rename this placeholder to match it — never the reverse; if they differ, the **source wins** and this row plus any **Errors**/flow references are updated to the source spelling.
+>
+> Provisional `code → HTTP status` mapping will follow §1.6 (the prior values were 409 for the conflict/expiry codes, 422 for `RESTAURANT_CLOSED`/`SAUCE_UNAVAILABLE`/`RECONCILIATION_BLOCKED`, and `DUPLICATE_WEBHOOK` is treated as success, 200/202).
 
 ### 1.8 Rate limits (Technical Foundation §14.4 — Upstash Redis)
 
