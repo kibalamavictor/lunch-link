@@ -1,0 +1,74 @@
+---
+description: LunchLink stack, money-logic boundary, and required workflow conventions
+alwaysApply: true
+---
+
+# LunchLink engineering conventions
+
+LunchLink is a multi-tenant (per-university) prepaid campus dining wallet for
+Uganda: students buy meal plans (swipe / Dining Plus / Dining Cash balances) and
+redeem meals at partner restaurants via QR, with mobile-money payments
+(Flutterwave) and restaurant payouts/reconciliation. Multi-tenant isolation is
+enforced via Postgres RLS — never bypass it in app code.
+
+## Stack
+
+- **Web:** Next.js 15 (App Router) + React 19, TypeScript. App lives in `apps/web`.
+- **Backend:** Supabase — PostgreSQL 15 + **Deno** Edge Functions in `supabase/functions/`.
+- **Monorepo:** pnpm workspaces + Turborepo. Shared code in `packages/*`
+  (`@lunchlink/types`, `@lunchlink/env`, `@lunchlink/ui`).
+- **Validation:** Zod. Validate all external input (request bodies, query params,
+  webhook payloads) at the edge before use.
+
+## Money & redemption logic lives in Postgres — do not reimplement it
+
+All wallet, redemption, swipe-rate, receipt, and semester-expiry logic is
+implemented as Postgres functions in
+`supabase/migrations/20250619000013_functions.sql` (the logical "013_functions"):
+
+- `apply_wallet_delta(...)` — idempotent, locked, versioned balance mutation
+- `check_redemption_eligibility(student_id)` — photo/account/wallet/balance,
+  daily limit, cooldown, Kampala-midnight boundary
+- `resolve_swipe_rate(restaurant_id, semester_id)` — restaurant → tier → university
+- `generate_receipt_number(prefix)`, `expire_semester_balances(semester_id)`
+- session helpers: `current_user_role/student/university/restaurant`,
+  `is_admin_or_university_admin`
+
+Rules:
+
+- Edge Functions and API routes **call these functions** (RPC) using the
+  **`service_role`** key — they are revoked from `anon`/`authenticated`
+  (`supabase/migrations/20250619000017_grants.sql`). Never re-derive balances,
+  eligibility, swipe rates, or receipt numbers in TypeScript.
+- Treat `wallet_ledger_entries`, `audit_events`, and `flutterwave_webhook_events`
+  as append-only (DB triggers enforce this). Money flows through
+  `apply_wallet_delta`, not direct table writes.
+- The `service_role` key must only be used server-side (Edge Functions, BFF route
+  handlers) — never expose it to the browser/client bundle.
+
+## Shared building blocks (use these, don't duplicate)
+
+- **Edge Functions:** use helpers in `supabase/functions/_shared/http.ts`
+  (`jsonResponse`, `corsHeaders`, `getRequestId`). Follow the `health` function as
+  the scaffold pattern.
+- **Response shapes:** use the envelope types in `@lunchlink/types`
+  (`ApiSuccessEnvelope`, `ApiErrorEnvelope`, `ApiMeta`, `isApiError`).
+- **Database types:** import schema-accurate types from `@lunchlink/types`
+  (`Tables<"...">`, `Enums<"...">`, `TablesInsert<"...">`). Regenerate with
+  `pnpm gen:types` after changing migrations — do not hand-edit
+  `packages/types/src/database.types.ts`.
+- **Env:** read/validate config via `@lunchlink/env` (`parseClientEnv`,
+  `parseServerEnv`). Never read `process.env` ad hoc for known vars.
+
+## Required workflow after every change
+
+Run and keep green (from repo root):
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm build
+```
+
+For schema/migration changes, also verify `supabase db reset` applies cleanly.
+There is no test runner configured yet; if you add tests, wire the runner first.
