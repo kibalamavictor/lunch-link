@@ -40,8 +40,7 @@ function applyClientEnvDefaults(
 ): ClientEnv {
   return {
     NEXT_PUBLIC_SUPABASE_URL:
-      parsed.NEXT_PUBLIC_SUPABASE_URL ??
-      clientEnvDevDefaults.NEXT_PUBLIC_SUPABASE_URL,
+      parsed.NEXT_PUBLIC_SUPABASE_URL ?? clientEnvDevDefaults.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
       parsed.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
       clientEnvDevDefaults.NEXT_PUBLIC_SUPABASE_ANON_KEY,
