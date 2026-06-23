@@ -13,6 +13,7 @@
     "typecheck": "turbo typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "gen:types": "supabase gen types typescript --local --schema public > packages/types/src/database.types.ts",
     "clean": "turbo clean && rm -rf node_modules",
     "prepare": "husky"
   },
