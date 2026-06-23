@@ -1,0 +1,58 @@
+name: Auto format on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-format-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auto-format:
+    name: Prettier auto-format
+    runs-on: ubuntu-latest
+    # The default GITHUB_TOKEN cannot push to a fork's branch, so only run for
+    # same-repository pull requests.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          # Check out the actual head branch (not the detached merge ref) so the
+          # formatting commit can be pushed back to the PR.
+          ref: ${{ github.head_ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Prettier
+        run: pnpm format
+
+      - name: Commit and push formatting changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "chore: format code with Prettier"
+            # Pushes made with the default GITHUB_TOKEN do not re-trigger
+            # workflows, so this cannot cause an infinite auto-format loop.
+            git push origin "HEAD:${{ github.head_ref }}"
+          else
+            echo "No formatting changes to commit"
+          fi
