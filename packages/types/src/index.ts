@@ -1,7 +1,22 @@
 /**
  * Shared domain types aligned with Technical Foundation v2 / Business Rules.
- * Database row types will be generated in a later sprint (supabase gen types).
+ *
+ * Database row/enum types are generated from the live Postgres schema by
+ * running `pnpm gen:types` at the repo root (requires the local Supabase
+ * stack) into `./database.types.ts` and re-exported below. Use
+ * `Tables<"...">`, `Enums<"...">`, `TablesInsert<"...">`, etc. for
+ * schema-accurate types.
  */
+export type {
+  Database,
+  Json,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+  Enums,
+  CompositeTypes,
+} from "./database.types.js";
+export { Constants } from "./database.types.js";
 
 export const USER_ROLES = [
   "student",
