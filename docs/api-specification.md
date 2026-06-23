@@ -106,35 +106,28 @@ Every non-public request carries a Supabase JWT: `Authorization: Bearer <access_
 
 ### 1.7 Error code registry
 
-Domain codes (Technical Foundation §14.3) plus the validation/auth codes this contract assumes. **HTTP status codes and the contract code strings below are unchanged.**
+> **Principle:** a code is emitted **verbatim by its source** — a Postgres function (`013_functions.sql`) or the middleware — and is **never renamed in flight**. Middleware maps **`code → HTTP status` only**. There is no error-code enum in the schema or `packages/types` (`ApiErrorEnvelope.code` is a free `string`); the canonical values are therefore exactly the strings the source emits.
 
-| Code | HTTP | Meaning |
-| ---- | ---- | ------- |
-| `VALIDATION_FAILED` | 400 | Zod/schema validation failed; `details` lists fields |
-| `UNAUTHENTICATED` | 401 | No valid session |
-| `FORBIDDEN` | 403 | Role/ownership/campus check failed |
-| `NOT_VERIFIED` | 403 | Student photo not approved (Business Rules §3.3–3.4) |
-| `NOT_FOUND` | 404 | Resource absent or RLS-hidden |
-| `WALLET_FROZEN` | 422 | Wallet under investigation (Business Rules §4.8) |
-| `INSUFFICIENT_BALANCE` | 422 | Swipe or combined Plus+Cash insufficient |
-| `DAILY_LIMIT_REACHED` | 422 | >2 redemptions in Kampala calendar day (§10.3) |
-| `COOLDOWN_ACTIVE` | 422 | <3h since last redemption (§10.3) |
-| `QR_EXPIRED` | 409 | Token past 120s TTL |
-| `QR_ALREADY_USED` | 409 | Single-use token already consumed (§12.2) |
-| `VALIDATION_SESSION_EXPIRED` | 409 | Staff exceeded 5-min session window |
-| `RESTAURANT_CLOSED` | 422 | Outside operating hours (§6.12) |
-| `SAUCE_UNAVAILABLE` | 422 | Not on daily menu or stock zero (§6.5, §12.4) |
-| `PAYMENT_EXPIRED` | 409 | Pending payment past 15-min TTL |
-| `DUPLICATE_WEBHOOK` | 200/202 | Already-success payment; webhook ignored (not an error to the caller) |
-| `RECONCILIATION_BLOCKED` | 422 | Action blocked by open wallet drift issues (§8.6) |
-| `PAYOUT_PERIOD_LOCKED` | 409 | Approved period is immutable (§8.7) |
-| `RATE_LIMITED` | 429 | Too many requests |
+The canonical codes are exactly those raised/returned by the DB functions in `013_functions.sql` (verbatim) plus the middleware-raised codes. The **Client message grouping** column is **non-normative**: a UI may collapse several verbatim codes under one user-facing message. (Per-endpoint **Errors** lists elsewhere in this doc reference these grouping labels for brevity — they are not additional codes.)
 
-> **Schema (flag — no enum backing):** There is **no error-code enum** anywhere in the schema or `packages/types`; `ApiErrorEnvelope.code` is a free `string`, so this registry lives only at the HTTP/application layer. It must be **mapped** to the raw codes the Postgres functions actually raise/return, which differ in spelling:
-> - `check_redemption_eligibility()` (`013_functions.sql`) returns `reason_code` values: `STUDENT_NOT_FOUND`, `PHOTO_NOT_APPROVED`, `ACCOUNT_NOT_ACTIVE`, `WALLET_FROZEN`, `INSUFFICIENT_SWIPES`, `DAILY_LIMIT_EXCEEDED`, `COOLDOWN_ACTIVE`.
-> - `apply_wallet_delta()` raises: `WALLET_NOT_FOUND`, `WALLET_FROZEN`, `INSUFFICIENT_SWIPES`, `INSUFFICIENT_DINING_PLUS`, `INSUFFICIENT_DINING_CASH`.
->
-> So the Edge Function layer must translate, e.g. `DAILY_LIMIT_EXCEEDED → DAILY_LIMIT_REACHED`, `INSUFFICIENT_SWIPES/_DINING_PLUS/_DINING_CASH → INSUFFICIENT_BALANCE`, `PHOTO_NOT_APPROVED → NOT_VERIFIED`, `STUDENT_NOT_FOUND → NOT_FOUND`. `WALLET_FROZEN` and `COOLDOWN_ACTIVE` already match.
+| Code (verbatim) | Source | HTTP | Client message grouping (non-normative) |
+| --------------- | ------ | ---- | --------------------------------------- |
+| `VALIDATION_FAILED` | middleware | 400 | `VALIDATION_FAILED` |
+| `UNAUTHENTICATED` | middleware | 401 | `UNAUTHENTICATED` |
+| `FORBIDDEN` | middleware | 403 | `FORBIDDEN` |
+| `RATE_LIMITED` | middleware | 429 | `RATE_LIMITED` |
+| `STUDENT_NOT_FOUND` | `check_redemption_eligibility()` | 404 | `NOT_FOUND` |
+| `WALLET_NOT_FOUND` | `apply_wallet_delta()` | 404 | `NOT_FOUND` |
+| `PHOTO_NOT_APPROVED` | `check_redemption_eligibility()` | 403 | `NOT_VERIFIED` |
+| `ACCOUNT_NOT_ACTIVE` | `check_redemption_eligibility()` | 403 | `ACCOUNT_NOT_ACTIVE` |
+| `WALLET_FROZEN` | `apply_wallet_delta()` · `check_redemption_eligibility()` | 422 | `WALLET_FROZEN` |
+| `INSUFFICIENT_SWIPES` | `apply_wallet_delta()` · `check_redemption_eligibility()` | 422 | `INSUFFICIENT_BALANCE` |
+| `INSUFFICIENT_DINING_PLUS` | `apply_wallet_delta()` | 422 | `INSUFFICIENT_BALANCE` |
+| `INSUFFICIENT_DINING_CASH` | `apply_wallet_delta()` | 422 | `INSUFFICIENT_BALANCE` |
+| `DAILY_LIMIT_EXCEEDED` | `check_redemption_eligibility()` | 422 | `DAILY_LIMIT_REACHED` |
+| `COOLDOWN_ACTIVE` | `check_redemption_eligibility()` | 422 | `COOLDOWN_ACTIVE` |
+
+> **Not-yet-built layers (non-normative, forward-looking):** QR, redemption, payment, reconciliation, and payout Edge Functions will emit their own codes **verbatim from their source** when implemented — e.g. `QR_EXPIRED`, `QR_ALREADY_USED` (§12.2), `VALIDATION_SESSION_EXPIRED`, `RESTAURANT_CLOSED` (§6.12), `SAUCE_UNAVAILABLE` (§6.5, §12.4), `PAYMENT_EXPIRED`, `DUPLICATE_WEBHOOK`, `RECONCILIATION_BLOCKED` (§8.6), `PAYOUT_PERIOD_LOCKED` (§8.7). These are **not canonical** here until their source function/handler exists; their `code → HTTP status` mapping will follow §1.6 (the prior values were 409 for the conflict/expiry codes, 422 for `RESTAURANT_CLOSED`/`SAUCE_UNAVAILABLE`/`RECONCILIATION_BLOCKED`, and `DUPLICATE_WEBHOOK` is treated as success, 200/202).
 
 ### 1.8 Rate limits (Technical Foundation §14.4 — Upstash Redis)
 
@@ -484,7 +477,7 @@ The field-level reconciliation has now been performed (see the `> Schema:` notes
 
 ### Flagged — present in the contract but with no (or partial) schema backing
 
-- **Error-code registry (§1.7):** no enum exists; `code` is a free `string`. Must be mapped from the DB-raised codes (see §1.7 note).
+- **Error-code registry (§1.7):** no enum exists; `code` is a free `string`. Canonical codes are emitted **verbatim** by their source (DB function or middleware) and never renamed; middleware maps `code → HTTP status` only. The tidy names are a non-normative client-message grouping (see §1.7).
 - **Role labels (§1.2):** `restaurant`/`manager` are API abstractions over `user_role` enum values `restaurant_staff`/`restaurant_manager`; `university_admin` is folded into `admin`. Unchanged per scope.
 - **Derived response fields (no column):** `lunch_credits`, `active_semester.ends_at` (use `semesters.end_date`), `provider_redirect`, `refresh_after_seconds`, `eligibility` (from `check_redemption_eligibility`), `swipe_deducted`, `extras_charged_ugx`, `wallet_after`/`balances_after`, webhook `outcome: "credited"`, financial-summary "gross margin".
 - **`approve-payout.secondary_approver_id`:** no column; only `payouts.approved_by` exists today.
