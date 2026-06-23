@@ -1,5 +1,5 @@
 ---
-description: LunchLink stack, money-logic boundary, and required workflow conventions
+description: LunchLink stack, money-logic boundary, contract docs, and required workflow conventions
 alwaysApply: true
 ---
 
@@ -45,6 +45,19 @@ Rules:
   `apply_wallet_delta`, not direct table writes.
 - The `service_role` key must only be used server-side (Edge Functions, BFF route
   handlers) — never expose it to the browser/client bundle.
+
+## Contract docs — build endpoints to match these
+
+- `docs/api-specification.md` is the **HTTP contract**: paths, methods, roles,
+  status codes, and error codes are authoritative there.
+- `docs/user-flows.md` is the **behavioral contract**: preconditions, step
+  order, postconditions, and failure branches.
+- The **live schema governs exact field names and types** (migrations +
+  `packages/types`); the API spec's `> Schema:` notes capture that mapping.
+- Build endpoints to match both docs. **If a flow seems to require deviating
+  from the contract, flag it (and propose the change) rather than silently
+  diverging** — update `api-specification.md` / `user-flows.md` (and keep
+  Business Rules + Technical Foundation in sync) before the code ships.
 
 ## Shared building blocks (use these, don't duplicate)
 
